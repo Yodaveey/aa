@@ -1,6 +1,6 @@
--- Invaderz Bedwars Legit (Dynamic Targeting)
--- Default: UpperTorso | Enemy Jumping: LowerTorso
--- Toggle: 'T' (PC) or Draggable Button (Mobile)
+-- Invaderz Bedwars Legit (Edge Track / No Head)
+-- Made by Invaderz
+-- Toggle: 'P' (PC) or Draggable Button (Mobile)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -12,11 +12,11 @@ local Camera = Workspace.CurrentCamera
 
 -- Settings
 local Settings = {
-    Key = Enum.KeyCode.T,
-    Smoothness = 0.045,      -- Tuned for Bedwars (Fast but Legit)
+    Key = Enum.KeyCode.P,
+    Smoothness = 0.022,      -- Extremely light (Mimics natural tracking)
     TeamCheck = true,
     WallCheck = true,
-    FOV = 150                -- Slightly larger for fast Bedwars fights
+    FOV = 120                
 }
 
 local Enabled = false
@@ -36,7 +36,7 @@ end
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "ToggleBtn"
 ToggleBtn.Parent = ScreenGui
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60) -- Red
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
 ToggleBtn.Position = UDim2.new(0.85, 0, 0.4, 0)
 ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
 ToggleBtn.Font = Enum.Font.GothamBold
@@ -91,7 +91,7 @@ local function toggleState()
     if game:GetService("StarterGui") then
         game:GetService("StarterGui"):SetCore("SendNotification", {
             Title = "Invaderz Bedwars",
-            Text = Enabled and "Legit Mode: ON" or "OFF",
+            Text = Enabled and "Edge Track: ON" or "OFF",
             Duration = 2
         })
     end
@@ -119,16 +119,11 @@ local function isVisible(targetPart)
 end
 
 local function getDynamicAimPart(character)
-    -- Dynamic Targeting Logic
     local hum = character:FindFirstChild("Humanoid")
-    if not hum then return character:FindFirstChild("UpperTorso") end
-    
-    -- If jumping/falling, aim lower to catch them
-    if hum.FloorMaterial == Enum.Material.Air then
+    if hum and hum.FloorMaterial == Enum.Material.Air then
         return character:FindFirstChild("LowerTorso") or character:FindFirstChild("HumanoidRootPart")
-    else
-        return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Head")
     end
+    return character:FindFirstChild("UpperTorso") or character:FindFirstChild("HumanoidRootPart")
 end
 
 local function getClosestPlayer()
@@ -164,10 +159,10 @@ RunService.RenderStepped:Connect(function()
         if target and target.Character then
             local aimPart = getDynamicAimPart(target.Character)
             if aimPart then
-                local targetPos = aimPart.Position
                 local currentCF = Camera.CFrame
-                local targetCF = CFrame.new(currentCF.Position, targetPos)
+                local targetCF = CFrame.new(currentCF.Position, aimPart.Position)
                 
+                -- Removed Deadzone, set very low smoothness (No "Pull" feel)
                 Camera.CFrame = currentCF:Lerp(targetCF, Settings.Smoothness)
             end
         end
@@ -178,8 +173,8 @@ end)
 if game:GetService("StarterGui") then
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Invaderz",
-        Text = "Bedwars Legit Loaded",
+        Text = "Bedwars Closet Loaded",
         Duration = 5
     })
 end
-print("Invaderz Bedwars Legit Loaded | Dynamic Aim Active")
+print("Invaderz Bedwars | Closet Mode Active")
