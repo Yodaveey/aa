@@ -1,0 +1,185 @@
+-- Invaderz Bedwars Legit (Dynamic Targeting)
+-- Default: UpperTorso | Enemy Jumping: LowerTorso
+-- Toggle: 'T' (PC) or Draggable Button (Mobile)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+-- Settings
+local Settings = {
+    Key = Enum.KeyCode.T,
+    Smoothness = 0.045,      -- Tuned for Bedwars (Fast but Legit)
+    TeamCheck = true,
+    WallCheck = true,
+    FOV = 150                -- Slightly larger for fast Bedwars fights
+}
+
+local Enabled = false
+
+-- UI Creation (Mobile Button)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "InvaderzBedwarsUI"
+if syn and syn.protect_gui then 
+    syn.protect_gui(ScreenGui) 
+    ScreenGui.Parent = CoreGui 
+elseif gethui then 
+    ScreenGui.Parent = gethui() 
+else 
+    ScreenGui.Parent = CoreGui 
+end
+
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Name = "ToggleBtn"
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60) -- Red
+ToggleBtn.Position = UDim2.new(0.85, 0, 0.4, 0)
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.Text = "OFF"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.TextSize = 14.000
+ToggleBtn.BorderSizePixel = 0
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = ToggleBtn
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 2
+UIStroke.Color = Color3.fromRGB(255, 255, 255)
+UIStroke.Parent = ToggleBtn
+
+-- Dragging Logic
+local dragging, dragInput, dragStart, startPos
+local function update(input)
+    local delta = input.Position - dragStart
+    ToggleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+ToggleBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = ToggleBtn.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+
+ToggleBtn.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then update(input) end
+end)
+
+-- Toggle Logic
+local function toggleState()
+    Enabled = not Enabled
+    ToggleBtn.BackgroundColor3 = Enabled and Color3.fromRGB(60, 255, 60) or Color3.fromRGB(255, 60, 60)
+    ToggleBtn.Text = Enabled and "ON" or "OFF"
+    
+    if game:GetService("StarterGui") then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Invaderz Bedwars",
+            Text = Enabled and "Legit Mode: ON" or "OFF",
+            Duration = 2
+        })
+    end
+end
+
+ToggleBtn.MouseButton1Click:Connect(toggleState)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Settings.Key then toggleState() end
+end)
+
+-- Aim Logic
+local function isVisible(targetPart)
+    if not Settings.WallCheck then return true end
+    local origin = Camera.CFrame.Position
+    local direction = targetPart.Position - origin
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    local result = Workspace:Raycast(origin, direction, raycastParams)
+    if not result then return true end
+    if result.Instance:IsDescendantOf(targetPart.Parent) then return true end
+    return false
+end
+
+local function getDynamicAimPart(character)
+    -- Dynamic Targeting Logic
+    local hum = character:FindFirstChild("Humanoid")
+    if not hum then return character:FindFirstChild("UpperTorso") end
+    
+    -- If jumping/falling, aim lower to catch them
+    if hum.FloorMaterial == Enum.Material.Air then
+        return character:FindFirstChild("LowerTorso") or character:FindFirstChild("HumanoidRootPart")
+    else
+        return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Head")
+    end
+end
+
+local function getClosestPlayer()
+    local closest = nil
+    local shortestDist = Settings.FOV
+    local mouse = UserInputService:GetMouseLocation()
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if Settings.TeamCheck and player.Team and player.Team == LocalPlayer.Team then continue end
+            local char = player.Character
+            if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+                local partToAim = getDynamicAimPart(char)
+                if partToAim then
+                    local pos, onScreen = Camera:WorldToViewportPoint(partToAim.Position)
+                    if onScreen and isVisible(partToAim) then
+                        local mag = (Vector2.new(pos.X, pos.Y) - mouse).Magnitude
+                        if mag < shortestDist then
+                            closest = player
+                            shortestDist = mag
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if Enabled then
+        local target = getClosestPlayer()
+        if target and target.Character then
+            local aimPart = getDynamicAimPart(target.Character)
+            if aimPart then
+                local targetPos = aimPart.Position
+                local currentCF = Camera.CFrame
+                local targetCF = CFrame.new(currentCF.Position, targetPos)
+                
+                Camera.CFrame = currentCF:Lerp(targetCF, Settings.Smoothness)
+            end
+        end
+    end
+end)
+
+-- Startup
+if game:GetService("StarterGui") then
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Invaderz",
+        Text = "Bedwars Legit Loaded",
+        Duration = 5
+    })
+end
+print("Invaderz Bedwars Legit Loaded | Dynamic Aim Active")
