@@ -13,7 +13,7 @@ local Camera = Workspace.CurrentCamera
 -- Settings
 local Settings = {
     Key = Enum.KeyCode.P,
-    Smoothness = 0.022,      -- Extremely light (Mimics natural tracking)
+    Smoothness = 0.035,      -- Extremely light (Mimics natural tracking)
     TeamCheck = true,
     WallCheck = true,
     FOV = 120                
